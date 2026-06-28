@@ -1,13 +1,14 @@
 import { Container } from "@/components/Container";
-import { content } from "@/lib/content";
+import { getContent } from "@/lib/content";
 
-export default function SkillsPage() {
+export default async function SkillsPage() {
+  const { skills } = await getContent();
   return (
     <Container>
       <section className="py-16">
         <h1 className="text-4xl font-semibold text-white">Skills</h1>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
-          {content.skills.map((group) => (
+          {skills.map((group) => (
             <div key={group.category} className="glass rounded-3xl p-6">
               <h2 className="text-xl font-semibold text-white">{group.category}</h2>
               <div className="mt-4 flex flex-wrap gap-2">

@@ -1,8 +1,10 @@
 import { Container } from "@/components/Container";
 import type { ReactNode } from "react";
 import { getAdminData, mapExperienceRow, mapNoteRow, mapProfileRow, mapProjectRow, mapSkillRow } from "@/lib/admin-data";
-import { deleteExperience, deleteMedia, deleteNote, deleteProject, deleteSkill, upsertExperience, upsertMedia, upsertNote, upsertProfile, upsertProject, upsertSkill } from "./actions";
-import { logoutAction } from "./auth-actions";
+import { deleteExperience, deleteMedia, deleteNote, deleteProject, deleteSkill, upsertExperience, upsertMedia, upsertNote, upsertProfile, upsertProject, upsertSkill } from "../actions";
+import { logoutAction } from "../auth-actions";
+
+export const dynamic = "force-dynamic";
 
 function Field({ label, name, defaultValue = "", type = "text", textarea = false }: { label: string; name: string; defaultValue?: string; type?: string; textarea?: boolean }) {
   return (
@@ -26,7 +28,7 @@ function SectionCard({ title, children }: { title: string; children: ReactNode }
   );
 }
 
-export default async function AdminPage() {
+export default async function AdminDashboardPage() {
   const data = await getAdminData();
   const profile = data?.profile ? mapProfileRow(data.profile) : null;
   const projects = data?.projects.map(mapProjectRow) ?? [];
@@ -47,12 +49,6 @@ export default async function AdminPage() {
             <button className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white">Log out</button>
           </form>
         </div>
-
-        {!data ? (
-          <div className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-amber-100">
-            Supabase server env is missing or unreachable. Check `.env.local` and your database connection.
-          </div>
-        ) : null}
 
         <div className="mt-8 grid gap-6 xl:grid-cols-2">
           <SectionCard title="Profile">
@@ -142,21 +138,6 @@ export default async function AdminPage() {
               <Field label="Items (one per line)" name="items" textarea />
               <button className="w-fit rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Add Skill Group</button>
             </form>
-            <div className="space-y-3">
-              {data?.skills.map((skill) => (
-                <form key={skill.id} action={upsertSkill} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <input type="hidden" name="id" defaultValue={skill.id} />
-                  <div className="grid gap-3">
-                    <Field label="Category" name="category" defaultValue={skill.category} />
-                    <Field label="Items (one per line)" name="items" defaultValue={(skill.items ?? []).join("\n")} textarea />
-                    <div className="flex gap-3">
-                      <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Update</button>
-                      <button formAction={deleteSkill} className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100">Delete</button>
-                    </div>
-                  </div>
-                </form>
-              ))}
-            </div>
           </SectionCard>
 
           <SectionCard title={`Notes (${notes.length})`}>
@@ -167,23 +148,6 @@ export default async function AdminPage() {
               <Field label="Created At" name="created_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
               <button className="w-fit rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Add Note</button>
             </form>
-            <div className="space-y-3">
-              {data?.notes.map((note) => (
-                <form key={note.id} action={upsertNote} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <input type="hidden" name="id" defaultValue={note.id} />
-                  <div className="grid gap-3">
-                    <Field label="Title" name="title" defaultValue={note.title} />
-                    <Field label="Summary" name="summary" defaultValue={note.summary} textarea />
-                    <Field label="Tags (one per line)" name="tags" defaultValue={(note.tags ?? []).join("\n")} textarea />
-                    <Field label="Created At" name="created_at" type="date" defaultValue={String(note.created_at).slice(0, 10)} />
-                    <div className="flex gap-3">
-                      <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Update</button>
-                      <button formAction={deleteNote} className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100">Delete</button>
-                    </div>
-                  </div>
-                </form>
-              ))}
-            </div>
           </SectionCard>
 
           <SectionCard title={`Media (${media.length})`}>
@@ -194,23 +158,6 @@ export default async function AdminPage() {
               <Field label="Alt Text" name="alt_text" />
               <button className="w-fit rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Add Media</button>
             </form>
-            <div className="space-y-3">
-              {data?.media.map((item: any) => (
-                <form key={item.id} action={upsertMedia} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <input type="hidden" name="id" defaultValue={item.id} />
-                  <div className="grid gap-3">
-                    <Field label="Name" name="name" defaultValue={item.name} />
-                    <Field label="URL" name="url" defaultValue={item.url} />
-                    <Field label="Type" name="type" defaultValue={item.type} />
-                    <Field label="Alt Text" name="alt_text" defaultValue={item.alt_text ?? ""} />
-                    <div className="flex gap-3">
-                      <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Update</button>
-                      <button formAction={deleteMedia} className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100">Delete</button>
-                    </div>
-                  </div>
-                </form>
-              ))}
-            </div>
           </SectionCard>
         </div>
       </section>

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Container } from "@/components/Container";
-import { content } from "@/lib/content";
+import { getContent } from "@/lib/content";
 
-export default function HomePage() {
-  const { profile, projects } = content;
+export default async function HomePage() {
+  const { profile, projects } = await getContent();
 
   return (
     <Container>

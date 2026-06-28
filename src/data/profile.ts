@@ -10,7 +10,7 @@ export const profile: PortfolioProfile = {
   resumeUrl: "/resume.pdf",
   avatarText: "JO",
   socials: [
-    { label: "GitHub", href: "https://github.com/" },
+    { label: "GitHub", href: "https://github.com/JayOverlay" },
     { label: "LinkedIn", href: "https://linkedin.com/" },
     { label: "Email", href: "mailto:jay@example.com" }
   ]
