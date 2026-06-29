@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { supabaseAdmin, hasSupabaseServerConfig } from "@/lib/supabase/server";
 
 function requireAdmin() {
@@ -18,12 +19,44 @@ function splitList(value: string) {
 }
 
 function parseSocials(value: string) {
+  if (!value.trim()) {
+    throw new Error("Socials JSON is required. Add at least one social link before saving.");
+  }
+
   try {
     const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+    if (!Array.isArray(parsed)) {
+      throw new Error("Socials JSON must be an array.");
+    }
+
+    if (parsed.length === 0) {
+      throw new Error("Socials JSON must include at least one social link.");
+    }
+
+    parsed.forEach((item, index) => {
+      if (!item || typeof item !== "object" || typeof item.label !== "string" || typeof item.href !== "string") {
+        throw new Error(`Socials JSON item ${index + 1} must include label and href strings.`);
+      }
+    });
+
+    return parsed;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Invalid Socials JSON: ${error.message}`);
+    }
+
+    throw new Error("Invalid Socials JSON.");
   }
+}
+
+function assertSaved(result: { error: { message: string } | null }, label: string) {
+  if (result.error) {
+    throw new Error(`${label} failed: ${result.error.message}`);
+  }
+}
+
+function adminRedirect(tab: string, saved: string) {
+  redirect(`/admin?tab=${tab}&saved=${saved}&r=${Date.now()}`);
 }
 
 export async function upsertProfile(formData: FormData) {
@@ -41,13 +74,18 @@ export async function upsertProfile(formData: FormData) {
 
   const id = String(formData.get("id") ?? "");
   if (id) {
-    await supabase.from("profiles").update(payload).eq("id", id);
+    const result = await supabase.from("profiles").update(payload).eq("id", id);
+    assertSaved(result, "Save profile");
   } else {
-    await supabase.from("profiles").insert(payload);
+    const result = await supabase.from("profiles").insert(payload);
+    assertSaved(result, "Create profile");
   }
 
   revalidatePath("/admin");
   revalidatePath("/");
+  revalidatePath("/about");
+  revalidatePath("/contact");
+  adminRedirect("profile", "profile");
 }
 
 export async function upsertProject(formData: FormData) {
@@ -66,23 +104,30 @@ export async function upsertProject(formData: FormData) {
 
   const id = String(formData.get("id") ?? "");
   if (id) {
-    await supabase.from("projects").update(payload).eq("id", id);
+    const result = await supabase.from("projects").update(payload).eq("id", id);
+    assertSaved(result, "Update project");
   } else {
-    await supabase.from("projects").insert(payload);
+    const result = await supabase.from("projects").insert(payload);
+    assertSaved(result, "Create project");
   }
 
   revalidatePath("/admin");
   revalidatePath("/projects");
   revalidatePath("/");
+  adminRedirect("projects", "project");
 }
 
 export async function deleteProject(formData: FormData) {
   const supabase = requireAdmin();
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("projects").delete().eq("id", id);
+  if (id) {
+    const result = await supabase.from("projects").delete().eq("id", id);
+    assertSaved(result, "Delete project");
+  }
   revalidatePath("/admin");
   revalidatePath("/projects");
   revalidatePath("/");
+  adminRedirect("projects", "project-deleted");
 }
 
 export async function upsertExperience(formData: FormData) {
@@ -95,18 +140,28 @@ export async function upsertExperience(formData: FormData) {
     bullets: splitList(String(formData.get("bullets") ?? ""))
   };
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("experiences").update(payload).eq("id", id);
-  else await supabase.from("experiences").insert(payload);
+  if (id) {
+    const result = await supabase.from("experiences").update(payload).eq("id", id);
+    assertSaved(result, "Update experience");
+  } else {
+    const result = await supabase.from("experiences").insert(payload);
+    assertSaved(result, "Create experience");
+  }
   revalidatePath("/admin");
   revalidatePath("/experience");
+  adminRedirect("experience", "experience");
 }
 
 export async function deleteExperience(formData: FormData) {
   const supabase = requireAdmin();
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("experiences").delete().eq("id", id);
+  if (id) {
+    const result = await supabase.from("experiences").delete().eq("id", id);
+    assertSaved(result, "Delete experience");
+  }
   revalidatePath("/admin");
   revalidatePath("/experience");
+  adminRedirect("experience", "experience-deleted");
 }
 
 export async function upsertSkill(formData: FormData) {
@@ -116,18 +171,28 @@ export async function upsertSkill(formData: FormData) {
     items: splitList(String(formData.get("items") ?? ""))
   };
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("skills").update(payload).eq("id", id);
-  else await supabase.from("skills").insert(payload);
+  if (id) {
+    const result = await supabase.from("skills").update(payload).eq("id", id);
+    assertSaved(result, "Update skill group");
+  } else {
+    const result = await supabase.from("skills").insert(payload);
+    assertSaved(result, "Create skill group");
+  }
   revalidatePath("/admin");
   revalidatePath("/skills");
+  adminRedirect("skills", "skill");
 }
 
 export async function deleteSkill(formData: FormData) {
   const supabase = requireAdmin();
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("skills").delete().eq("id", id);
+  if (id) {
+    const result = await supabase.from("skills").delete().eq("id", id);
+    assertSaved(result, "Delete skill group");
+  }
   revalidatePath("/admin");
   revalidatePath("/skills");
+  adminRedirect("skills", "skill-deleted");
 }
 
 export async function upsertNote(formData: FormData) {
@@ -139,16 +204,26 @@ export async function upsertNote(formData: FormData) {
     created_at: String(formData.get("created_at") ?? new Date().toISOString().slice(0, 10))
   };
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("notes").update(payload).eq("id", id);
-  else await supabase.from("notes").insert(payload);
+  if (id) {
+    const result = await supabase.from("notes").update(payload).eq("id", id);
+    assertSaved(result, "Update note");
+  } else {
+    const result = await supabase.from("notes").insert(payload);
+    assertSaved(result, "Create note");
+  }
   revalidatePath("/admin");
+  adminRedirect("notes", "note");
 }
 
 export async function deleteNote(formData: FormData) {
   const supabase = requireAdmin();
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("notes").delete().eq("id", id);
+  if (id) {
+    const result = await supabase.from("notes").delete().eq("id", id);
+    assertSaved(result, "Delete note");
+  }
   revalidatePath("/admin");
+  adminRedirect("notes", "note-deleted");
 }
 
 export async function upsertMedia(formData: FormData) {
@@ -160,14 +235,58 @@ export async function upsertMedia(formData: FormData) {
     alt_text: String(formData.get("alt_text") ?? "") || null
   };
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("media").update(payload).eq("id", id);
-  else await supabase.from("media").insert(payload);
+  if (id) {
+    const result = await supabase.from("media").update(payload).eq("id", id);
+    assertSaved(result, "Update media");
+  } else {
+    const result = await supabase.from("media").insert(payload);
+    assertSaved(result, "Create media");
+  }
   revalidatePath("/admin");
+  adminRedirect("media", "media");
 }
 
 export async function deleteMedia(formData: FormData) {
   const supabase = requireAdmin();
   const id = String(formData.get("id") ?? "");
-  if (id) await supabase.from("media").delete().eq("id", id);
+  if (id) {
+    const result = await supabase.from("media").delete().eq("id", id);
+    assertSaved(result, "Delete media");
+  }
   revalidatePath("/admin");
+  adminRedirect("media", "media-deleted");
+}
+
+export async function upsertCertificate(formData: FormData) {
+  const supabase = requireAdmin();
+  const payload = {
+    title: String(formData.get("title") ?? ""),
+    issuer: String(formData.get("issuer") ?? ""),
+    issued_at: String(formData.get("issued_at") ?? ""),
+    credential_id: String(formData.get("credential_id") ?? "") || null,
+    pdf_url: String(formData.get("pdf_url") ?? "") || null
+  };
+
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    const result = await supabase.from("certificates").update(payload).eq("id", id);
+    assertSaved(result, "Update certificate");
+  } else {
+    const result = await supabase.from("certificates").insert(payload);
+    assertSaved(result, "Create certificate");
+  }
+
+  revalidatePath("/admin");
+  adminRedirect("certificates", "certificate");
+}
+
+export async function deleteCertificate(formData: FormData) {
+  const supabase = requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    const result = await supabase.from("certificates").delete().eq("id", id);
+    assertSaved(result, "Delete certificate");
+  }
+  revalidatePath("/admin");
+  adminRedirect("certificates", "certificate-deleted");
 }

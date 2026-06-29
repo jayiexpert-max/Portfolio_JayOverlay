@@ -65,12 +65,24 @@ create table if not exists public.media (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.certificates (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  issuer text not null,
+  issued_at date not null,
+  credential_id text,
+  pdf_url text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table public.profiles enable row level security;
 alter table public.projects enable row level security;
 alter table public.experiences enable row level security;
 alter table public.skills enable row level security;
 alter table public.notes enable row level security;
 alter table public.media enable row level security;
+alter table public.certificates enable row level security;
 
 do $$
 begin
@@ -103,5 +115,10 @@ begin
     select 1 from pg_policies where schemaname = 'public' and tablename = 'media' and policyname = 'Public read media'
   ) then
     create policy "Public read media" on public.media for select using (true);
+  end if;
+  if not exists (
+    select 1 from pg_policies where schemaname = 'public' and tablename = 'certificates' and policyname = 'Public read certificates'
+  ) then
+    create policy "Public read certificates" on public.certificates for select using (true);
   end if;
 end $$;

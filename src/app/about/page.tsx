@@ -1,6 +1,8 @@
 import { Container } from "@/components/Container";
 import { getContent } from "@/lib/content";
 
+export const dynamic = "force-dynamic";
+
 export default async function AboutPage() {
   const { profile } = await getContent();
   return (

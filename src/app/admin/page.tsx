@@ -1,7 +1,10 @@
 import { Container } from "@/components/Container";
+import { ConfirmActionButton } from "@/components/ConfirmActionButton";
+import { ScrollToAdminNotice } from "@/components/ScrollToAdminNotice";
+import Link from "next/link";
 import type { ReactNode } from "react";
-import { getAdminData, mapExperienceRow, mapNoteRow, mapProfileRow, mapProjectRow, mapSkillRow } from "@/lib/admin-data";
-import { deleteExperience, deleteMedia, deleteNote, deleteProject, deleteSkill, upsertExperience, upsertMedia, upsertNote, upsertProfile, upsertProject, upsertSkill } from "./actions";
+import { getAdminData, mapCertificateRow, mapExperienceRow, mapNoteRow, mapProfileRow, mapProjectRow, mapSkillRow } from "@/lib/admin-data";
+import { deleteCertificate, deleteExperience, deleteMedia, deleteNote, deleteProject, deleteSkill, upsertCertificate, upsertExperience, upsertMedia, upsertNote, upsertProfile, upsertProject, upsertSkill } from "./actions";
 import { logoutAction } from "./auth-actions";
 
 function Field({ label, name, defaultValue = "", type = "text", textarea = false }: { label: string; name: string; defaultValue?: string; type?: string; textarea?: boolean }) {
@@ -26,7 +29,37 @@ function SectionCard({ title, children }: { title: string; children: ReactNode }
   );
 }
 
-export default async function AdminPage() {
+const savedMessages: Record<string, string> = {
+  profile: "Profile saved successfully.",
+  project: "Project saved successfully.",
+  "project-deleted": "Project deleted successfully.",
+  experience: "Experience saved successfully.",
+  "experience-deleted": "Experience deleted successfully.",
+  skill: "Skill group saved successfully.",
+  "skill-deleted": "Skill group deleted successfully.",
+  note: "Note saved successfully.",
+  "note-deleted": "Note deleted successfully.",
+  media: "Media saved successfully.",
+  "media-deleted": "Media deleted successfully.",
+  certificate: "Certificate saved successfully.",
+  "certificate-deleted": "Certificate deleted successfully."
+};
+
+const tabs = [
+  { id: "profile", label: "Profile" },
+  { id: "projects", label: "Projects" },
+  { id: "experience", label: "Experience" },
+  { id: "skills", label: "Skills" },
+  { id: "notes", label: "Notes" },
+  { id: "media", label: "Media" },
+  { id: "certificates", label: "Certificates" }
+];
+
+function isKnownTab(tab: string | undefined) {
+  return tabs.some((item) => item.id === tab);
+}
+
+export default async function AdminPage({ searchParams }: { searchParams?: { saved?: string; tab?: string; r?: string } }) {
   const data = await getAdminData();
   const profile = data?.profile ? mapProfileRow(data.profile) : null;
   const projects = data?.projects.map(mapProjectRow) ?? [];
@@ -34,9 +67,14 @@ export default async function AdminPage() {
   const skills = data?.skills.map(mapSkillRow) ?? [];
   const notes = data?.notes.map(mapNoteRow) ?? [];
   const media = data?.media ?? [];
+  const certificates = data?.certificates.map(mapCertificateRow) ?? [];
+  const savedMessage = searchParams?.saved ? savedMessages[searchParams.saved] : "";
+  const activeTab = isKnownTab(searchParams?.tab) ? searchParams?.tab : "profile";
+  const resetKey = `${searchParams?.saved ?? "idle"}-${searchParams?.r ?? "0"}`;
 
   return (
     <Container>
+      <ScrollToAdminNotice active={Boolean(savedMessage)} />
       <section className="py-16">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -48,13 +86,51 @@ export default async function AdminPage() {
           </form>
         </div>
 
+        {savedMessage ? (
+          <>
+            <div
+              id="admin-save-notice"
+              className="mt-8 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-emerald-100"
+            >
+              {savedMessage}
+            </div>
+            <div
+              role="status"
+              aria-live="polite"
+              className="fixed bottom-6 right-6 z-[120] max-w-sm rounded-2xl border border-emerald-300/30 bg-emerald-500/15 px-5 py-4 text-sm font-medium text-emerald-50 shadow-glow backdrop-blur-xl"
+            >
+              {savedMessage}
+            </div>
+          </>
+        ) : null}
+
         {!data ? (
           <div className="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-amber-100">
             Supabase server env is missing or unreachable. Check `.env.local` and your database connection.
           </div>
         ) : null}
 
-        <div className="mt-8 grid gap-6 xl:grid-cols-2">
+        <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-2">
+          <div className="flex gap-2 overflow-x-auto">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <Link
+                  key={tab.id}
+                  href={`/admin?tab=${tab.id}`}
+                  className={`whitespace-nowrap rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                    isActive ? "bg-white text-ink-900" : "text-ink-200 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-8">
+          {activeTab === "profile" ? (
           <SectionCard title="Profile">
             <form action={upsertProfile} className="grid gap-3">
               <input type="hidden" name="id" defaultValue={data?.profile?.id ?? ""} />
@@ -69,9 +145,11 @@ export default async function AdminPage() {
               <button className="w-fit rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Save Profile</button>
             </form>
           </SectionCard>
+          ) : null}
 
+          {activeTab === "projects" ? (
           <SectionCard title={`Projects (${projects.length})`}>
-            <form action={upsertProject} className="grid gap-3">
+            <form key={`add-project-${resetKey}`} action={upsertProject} className="grid gap-3">
               <Field label="Slug" name="slug" />
               <Field label="Title" name="title" />
               <Field label="Summary" name="summary" textarea />
@@ -99,16 +177,24 @@ export default async function AdminPage() {
                     <Field label="GitHub" name="github" defaultValue={project.github ?? ""} />
                     <div className="flex gap-3">
                       <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Update</button>
-                      <button formAction={deleteProject} className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100">Delete</button>
+                      <ConfirmActionButton
+                        formAction={deleteProject}
+                        confirmMessage="Delete this project permanently?"
+                        className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100"
+                      >
+                        Delete
+                      </ConfirmActionButton>
                     </div>
                   </div>
                 </form>
               ))}
             </div>
           </SectionCard>
+          ) : null}
 
+          {activeTab === "experience" ? (
           <SectionCard title={`Experiences (${experiences.length})`}>
-            <form action={upsertExperience} className="grid gap-3">
+            <form key={`add-experience-${resetKey}`} action={upsertExperience} className="grid gap-3">
               <Field label="Company" name="company" />
               <Field label="Role" name="role" />
               <Field label="Period" name="period" />
@@ -128,16 +214,24 @@ export default async function AdminPage() {
                     <Field label="Bullets (one per line)" name="bullets" defaultValue={(experience.bullets ?? []).join("\n")} textarea />
                     <div className="flex gap-3">
                       <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Update</button>
-                      <button formAction={deleteExperience} className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100">Delete</button>
+                      <ConfirmActionButton
+                        formAction={deleteExperience}
+                        confirmMessage="Delete this experience entry permanently?"
+                        className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100"
+                      >
+                        Delete
+                      </ConfirmActionButton>
                     </div>
                   </div>
                 </form>
               ))}
             </div>
           </SectionCard>
+          ) : null}
 
+          {activeTab === "skills" ? (
           <SectionCard title={`Skills (${skills.length})`}>
-            <form action={upsertSkill} className="grid gap-3">
+            <form key={`add-skill-${resetKey}`} action={upsertSkill} className="grid gap-3">
               <Field label="Category" name="category" />
               <Field label="Items (one per line)" name="items" textarea />
               <button className="w-fit rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Add Skill Group</button>
@@ -151,16 +245,24 @@ export default async function AdminPage() {
                     <Field label="Items (one per line)" name="items" defaultValue={(skill.items ?? []).join("\n")} textarea />
                     <div className="flex gap-3">
                       <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Update</button>
-                      <button formAction={deleteSkill} className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100">Delete</button>
+                      <ConfirmActionButton
+                        formAction={deleteSkill}
+                        confirmMessage="Delete this skill group permanently?"
+                        className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100"
+                      >
+                        Delete
+                      </ConfirmActionButton>
                     </div>
                   </div>
                 </form>
               ))}
             </div>
           </SectionCard>
+          ) : null}
 
+          {activeTab === "notes" ? (
           <SectionCard title={`Notes (${notes.length})`}>
-            <form action={upsertNote} className="grid gap-3">
+            <form key={`add-note-${resetKey}`} action={upsertNote} className="grid gap-3">
               <Field label="Title" name="title" />
               <Field label="Summary" name="summary" textarea />
               <Field label="Tags (one per line)" name="tags" textarea />
@@ -178,16 +280,24 @@ export default async function AdminPage() {
                     <Field label="Created At" name="created_at" type="date" defaultValue={String(note.created_at).slice(0, 10)} />
                     <div className="flex gap-3">
                       <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Update</button>
-                      <button formAction={deleteNote} className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100">Delete</button>
+                      <ConfirmActionButton
+                        formAction={deleteNote}
+                        confirmMessage="Delete this note permanently?"
+                        className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100"
+                      >
+                        Delete
+                      </ConfirmActionButton>
                     </div>
                   </div>
                 </form>
               ))}
             </div>
           </SectionCard>
+          ) : null}
 
+          {activeTab === "media" ? (
           <SectionCard title={`Media (${media.length})`}>
-            <form action={upsertMedia} className="grid gap-3">
+            <form key={`add-media-${resetKey}`} action={upsertMedia} className="grid gap-3">
               <Field label="Name" name="name" />
               <Field label="URL" name="url" />
               <Field label="Type" name="type" />
@@ -205,13 +315,57 @@ export default async function AdminPage() {
                     <Field label="Alt Text" name="alt_text" defaultValue={item.alt_text ?? ""} />
                     <div className="flex gap-3">
                       <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Update</button>
-                      <button formAction={deleteMedia} className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100">Delete</button>
+                      <ConfirmActionButton
+                        formAction={deleteMedia}
+                        confirmMessage="Delete this media item permanently?"
+                        className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100"
+                      >
+                        Delete
+                      </ConfirmActionButton>
                     </div>
                   </div>
                 </form>
               ))}
             </div>
           </SectionCard>
+          ) : null}
+
+          {activeTab === "certificates" ? (
+          <SectionCard title={`Certificates (${certificates.length})`}>
+            <form key={`add-certificate-${resetKey}`} action={upsertCertificate} className="grid gap-3">
+              <Field label="Title" name="title" />
+              <Field label="Issuer" name="issuer" />
+              <Field label="Issued At" name="issued_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+              <Field label="Credential ID" name="credential_id" />
+              <Field label="PDF URL" name="pdf_url" />
+              <button className="w-fit rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Add Certificate</button>
+            </form>
+            <div className="space-y-3">
+              {certificates.map((certificate: any, index: number) => (
+                <form key={certificate.id ?? `${certificate.title}-${index}`} action={upsertCertificate} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <input type="hidden" name="id" defaultValue={certificate.id ?? ""} />
+                  <div className="grid gap-3">
+                    <Field label="Title" name="title" defaultValue={certificate.title} />
+                    <Field label="Issuer" name="issuer" defaultValue={certificate.issuer} />
+                    <Field label="Issued At" name="issued_at" type="date" defaultValue={String(certificate.issuedAt).slice(0, 10)} />
+                    <Field label="Credential ID" name="credential_id" defaultValue={certificate.credentialId ?? ""} />
+                    <Field label="PDF URL" name="pdf_url" defaultValue={certificate.pdfUrl ?? ""} />
+                    <div className="flex gap-3">
+                      <button className="rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-900">Update</button>
+                      <ConfirmActionButton
+                        formAction={deleteCertificate}
+                        confirmMessage="Delete this certificate permanently?"
+                        className="rounded-full border border-red-400/40 px-4 py-2 text-sm font-medium text-red-100"
+                      >
+                        Delete
+                      </ConfirmActionButton>
+                    </div>
+                  </div>
+                </form>
+              ))}
+            </div>
+          </SectionCard>
+          ) : null}
         </div>
       </section>
     </Container>

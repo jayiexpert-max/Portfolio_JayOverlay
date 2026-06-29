@@ -1,6 +1,6 @@
-import { experiences as localExperiences, notes as localNotes, profile as localProfile, projects as localProjects, skills as localSkills } from "@/data/profile";
+import { certificates as localCertificates, experiences as localExperiences, notes as localNotes, profile as localProfile, projects as localProjects, skills as localSkills } from "@/data/profile";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase/client";
-import type { Experience, Note, PortfolioProfile, Project, SkillGroup } from "@/types/portfolio";
+import type { Certificate, Experience, Note, PortfolioProfile, Project, SkillGroup } from "@/types/portfolio";
 
 export type ContentPayload = {
   profile: PortfolioProfile;
@@ -8,6 +8,7 @@ export type ContentPayload = {
   experiences: Experience[];
   skills: SkillGroup[];
   notes: Note[];
+  certificates: Certificate[];
 };
 
 const fallbackContent: ContentPayload = {
@@ -15,22 +16,35 @@ const fallbackContent: ContentPayload = {
   projects: localProjects,
   experiences: localExperiences,
   skills: localSkills,
-  notes: localNotes
+  notes: localNotes,
+  certificates: localCertificates
 };
 
 export const content = fallbackContent;
+
+function mapCertificate(certificate: any): Certificate {
+  return {
+    id: certificate.id ?? undefined,
+    title: certificate.title,
+    issuer: certificate.issuer,
+    issuedAt: certificate.issued_at ?? certificate.issuedAt,
+    credentialId: certificate.credential_id ?? certificate.credentialId ?? undefined,
+    pdfUrl: certificate.pdf_url ?? certificate.pdfUrl ?? undefined
+  };
+}
 
 export async function getContent(): Promise<ContentPayload> {
   if (!hasSupabaseConfig || !supabase) {
     return fallbackContent;
   }
 
-  const [profileRes, projectsRes, experiencesRes, skillsRes, notesRes] = await Promise.all([
+  const [profileRes, projectsRes, experiencesRes, skillsRes, notesRes, certificatesRes] = await Promise.all([
     supabase.from("profiles").select("*").limit(1).maybeSingle(),
     supabase.from("projects").select("*").order("created_at", { ascending: true }),
     supabase.from("experiences").select("*").order("created_at", { ascending: true }),
     supabase.from("skills").select("*").order("created_at", { ascending: true }),
-    supabase.from("notes").select("*").order("created_at", { ascending: false })
+    supabase.from("notes").select("*").order("created_at", { ascending: false }),
+    supabase.from("certificates").select("*").order("issued_at", { ascending: false })
   ]);
 
   if (profileRes.error || projectsRes.error || experiencesRes.error || skillsRes.error || notesRes.error) {
@@ -79,7 +93,8 @@ export async function getContent(): Promise<ContentPayload> {
       summary: note.summary,
       tags: note.tags ?? [],
       createdAt: note.created_at
-    }))
+    })),
+    certificates: (certificatesRes.error ? fallbackContent.certificates : certificatesRes.data ?? fallbackContent.certificates).map(mapCertificate)
   };
 }
 

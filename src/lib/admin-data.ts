@@ -1,5 +1,5 @@
 import { supabaseAdmin, hasSupabaseServerConfig } from "@/lib/supabase/server";
-import type { Experience, Note, PortfolioProfile, Project, SkillGroup } from "@/types/portfolio";
+import type { Certificate, Experience, Note, PortfolioProfile, Project, SkillGroup } from "@/types/portfolio";
 
 function fallbackArray<T>(value: T[] | null | undefined, fallback: T[]) {
   return value && value.length ? value : fallback;
@@ -10,13 +10,14 @@ export async function getAdminData() {
     return null;
   }
 
-  const [profileRes, projectsRes, experiencesRes, skillsRes, notesRes, mediaRes] = await Promise.all([
+  const [profileRes, projectsRes, experiencesRes, skillsRes, notesRes, mediaRes, certificatesRes] = await Promise.all([
     supabaseAdmin.from("profiles").select("*").limit(1).maybeSingle(),
     supabaseAdmin.from("projects").select("*").order("created_at", { ascending: true }),
     supabaseAdmin.from("experiences").select("*").order("created_at", { ascending: true }),
     supabaseAdmin.from("skills").select("*").order("created_at", { ascending: true }),
     supabaseAdmin.from("notes").select("*").order("created_at", { ascending: false }),
-    supabaseAdmin.from("media").select("*").order("created_at", { ascending: false })
+    supabaseAdmin.from("media").select("*").order("created_at", { ascending: false }),
+    supabaseAdmin.from("certificates").select("*").order("issued_at", { ascending: false })
   ]);
 
   if (profileRes.error || projectsRes.error || experiencesRes.error || skillsRes.error || notesRes.error || mediaRes.error) {
@@ -29,7 +30,8 @@ export async function getAdminData() {
     experiences: experiencesRes.data ?? [],
     skills: skillsRes.data ?? [],
     notes: notesRes.data ?? [],
-    media: mediaRes.data ?? []
+    media: mediaRes.data ?? [],
+    certificates: certificatesRes.error ? [] : certificatesRes.data ?? []
   };
 }
 
@@ -70,6 +72,17 @@ export function mapNoteRow(row: any): Note {
     summary: row.summary,
     tags: fallbackArray(row.tags, []),
     createdAt: row.created_at
+  };
+}
+
+export function mapCertificateRow(row: any): Certificate {
+  return {
+    id: row.id ?? undefined,
+    title: row.title,
+    issuer: row.issuer,
+    issuedAt: row.issued_at,
+    credentialId: row.credential_id ?? undefined,
+    pdfUrl: row.pdf_url ?? undefined
   };
 }
 

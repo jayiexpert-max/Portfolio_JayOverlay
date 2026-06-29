@@ -1,4 +1,4 @@
-import type { Experience, Note, PortfolioProfile, Project, SkillGroup } from "@/types/portfolio";
+import type { Certificate, Experience, Note, PortfolioProfile, Project, SkillGroup } from "@/types/portfolio";
 
 export const profile: PortfolioProfile = {
   name: "Jay Overlay",
@@ -72,5 +72,22 @@ export const notes: Note[] = [
     summary: "Abstract content access so SQLite/Postgres can be added later without redesign.",
     tags: ["architecture", "storage"],
     createdAt: "2026-06-28"
+  }
+];
+
+export const certificates: Certificate[] = [
+  {
+    title: "Industrial Automation Foundations",
+    issuer: "Siemens",
+    issuedAt: "2025-05-12",
+    credentialId: "SIM-IND-2025-001",
+    pdfUrl: "https://example.com/certificates/industrial-automation-foundations.pdf"
+  },
+  {
+    title: "Modern Web Application Architecture",
+    issuer: "Open Learning Lab",
+    issuedAt: "2026-01-20",
+    credentialId: "OWA-2026-114",
+    pdfUrl: "https://example.com/certificates/modern-web-application-architecture.pdf"
   }
 ];

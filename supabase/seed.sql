@@ -72,3 +72,20 @@ values
     array['architecture', 'storage'],
     '2026-06-28'
   );
+
+insert into public.certificates (title, issuer, issued_at, credential_id, pdf_url)
+values
+  (
+    'Industrial Automation Foundations',
+    'Siemens',
+    '2025-05-12',
+    'SIM-IND-2025-001',
+    'https://example.com/certificates/industrial-automation-foundations.pdf'
+  ),
+  (
+    'Modern Web Application Architecture',
+    'Open Learning Lab',
+    '2026-01-20',
+    'OWA-2026-114',
+    'https://example.com/certificates/modern-web-application-architecture.pdf'
+  );

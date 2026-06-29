@@ -35,6 +35,15 @@ export type Note = {
   createdAt: string;
 };
 
+export type Certificate = {
+  id?: string;
+  title: string;
+  issuer: string;
+  issuedAt: string;
+  credentialId?: string;
+  pdfUrl?: string;
+};
+
 export type PortfolioProfile = {
   name: string;
   title: string;
